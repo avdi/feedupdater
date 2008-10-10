@@ -57,7 +57,8 @@ require 'rubygems'
 
 if !defined?(Daemons)
   begin
-    require_gem('daemons', '>= 0.4.4')
+    gem('daemons', '>= 0.4.4')
+    require('daemons')
   rescue LoadError
     require 'daemons'
   end
@@ -71,7 +72,8 @@ if !defined?(FeedTools::FEED_TOOLS_VERSION)
         File.dirname(__FILE__) + "/../../feedtools/lib"))
       require("feed_tools")
     else
-      require_gem('feedtools', '>= 0.2.23')
+      gem('feedtools', '>= 0.2.23')
+      require('feedtools')
     end
   rescue LoadError
     require 'feed_tools'
@@ -84,7 +86,7 @@ require 'logger'
 
 class FeedUpdaterLogger < Logger
   attr_accessor :prefix
-  
+
   alias_method :old_log, :log
   def log(level, message)
     if defined?(@prefix) && @prefix != nil
@@ -155,29 +157,29 @@ module FeedTools
       @initial_directory = nil if !defined?(@initial_directory)
       return @initial_directory
     end
-    
+
     # Returns the directory where the pid files are stored.
     def pid_file_dir()
       @pid_file_dir = nil if !defined?(@pid_file_dir)
       return @pid_file_dir
     end
-    
+
     # Sets the directory where the pid files are stored.
     def pid_file_dir=(new_pid_file_dir)
       @pid_file_dir = new_pid_file_dir
     end
-    
+
     # Returns the directory where the log files are stored.
     def log_file_dir()
       @log_file_dir = nil if !defined?(@log_file_dir)
       return @log_file_dir
     end
-    
+
     # Sets the directory where the log files are stored.
     def log_file_dir=(new_log_file_dir)
       @log_file_dir = new_log_file_dir
     end
-    
+
     # Returns the path to the log file.
     def log_file()
       if !defined?(@log_file) || @log_file.nil?
@@ -190,7 +192,7 @@ module FeedTools
       end
       return @log_file
     end
-    
+
     # Returns the logger object.
     def logger()
       if !defined?(@logger) || @logger.nil?
@@ -202,7 +204,7 @@ module FeedTools
       end
       return @logger
     end
-        
+
     # Restarts the logger object.  This needs to be done after the program
     # forks.
     def restart_logger()
@@ -216,7 +218,7 @@ module FeedTools
       @logger.progname = nil
       @logger.prefix = "FeedUpdater".ljust(20)
     end
-    
+
     # Returns a list of feeds to be updated.
     def feed_href_list()
       if !defined?(@feed_href_list) || @feed_href_list.nil?
@@ -231,20 +233,20 @@ module FeedTools
       end
       return @feed_href_list
     end
-    
+
     # Sets a list of feeds to be updated.
     def feed_href_list=(new_feed_href_list)
       @feed_href_list_override = true
       @feed_href_list = new_feed_href_list
     end
-    
+
     # Returns either :running or :stopped depending on the daemon's current
     # status.
     def status()
       @status = :stopped if @status.nil?
       return @status
     end
-    
+
     # Returns a hash of the currently set updater options.
     def updater_options()
       if !defined?(@updater_options) || @updater_options.nil?
@@ -257,7 +259,7 @@ module FeedTools
       end
       return @updater_options
     end
-    
+
     # Returns a hash of the currently set daemon options.
     def daemon_options()
       if !defined?(@daemon_options) || @daemon_options.nil?
@@ -272,13 +274,13 @@ module FeedTools
       @daemon_options[:dir] = self.pid_file_dir
       return @daemon_options
     end
-    
+
     # Returns a reference to the daemon application.
     def application()
       @application = nil if !defined?(@application)
       return @application
     end
-    
+
     # Returns the process id of the daemon.  This should return nil if the
     # daemon is not running.
     def pid()
@@ -299,7 +301,7 @@ module FeedTools
         end
       end
     end
-    
+
     def cloaker(&blk) #:nodoc:
       (class << self; self; end).class_eval do
         define_method(:cloaker_, &blk)
@@ -309,7 +311,7 @@ module FeedTools
       end
     end
     protected :cloaker
-    
+
     # Starts the daemon.
     def start()
       self.logger.prefix = "FeedUpdater".ljust(20)
@@ -336,7 +338,7 @@ module FeedTools
 
           self.restart_logger()
           self.logger.info("Using environment: #{FEED_TOOLS_ENV}")
-          
+
           if FeedTools.configurations[:feed_cache].nil?
             FeedTools.configurations[:feed_cache] =
               "FeedTools::DatabaseFeedCache"
@@ -399,7 +401,7 @@ module FeedTools
             end
             exit
           end
-          
+
           # A random start delay is introduced so that we don't have multiple
           # feed updater daemons getting kicked off at the same time by
           # multiple users.
@@ -408,7 +410,7 @@ module FeedTools
             self.logger.info("Startup delay set for #{delay} minutes.")
             sleep(delay.minutes)
           end
-          
+
           # The main feed update loop.
           loop do
             result = nil
@@ -468,7 +470,7 @@ module FeedTools
       @status = :running
       return self.pid
     end
-    
+
     # Stops the daemon.
     def stop()
       if self.pid.nil?
@@ -482,7 +484,7 @@ module FeedTools
       begin
         # No, really, I mean it.  You need to die.
         system("kill #{self.pid} 2> /dev/null")
-        
+
         # Perhaps I wasn't clear somehow?
         system("kill -9 #{self.pid} 2> /dev/null")
       rescue Exception
@@ -508,13 +510,13 @@ module FeedTools
       end
       return nil
     end
-    
+
     # Restarts the daemon.
     def restart()
       self.stop()
       self.start()
     end
-    
+
     def progress_precentage()
       if !defined?(@remaining_href_list) || !defined?(@feed_href_list)
         return nil
@@ -528,7 +530,7 @@ module FeedTools
       return 100.0 - (100.0 *
         (@remaining_href_list.size.to_f / @feed_href_list.size.to_f))
     end
-    
+
     # Updates all of the feeds.
     def update_feeds()
       self.logger.level = 0
@@ -564,7 +566,7 @@ module FeedTools
       end
       self.logger.info("Updating #{@feed_href_list.size} feed(s)...")
       self.logger.level = self.updater_options[:log_level]
-      
+
       @threads = []
       @remaining_href_list = @feed_href_list.dup
 
@@ -573,14 +575,14 @@ module FeedTools
       begin_updating = false
       self.logger.info(
         "Starting up #{self.updater_options[:threads]} thread(s)...")
-      
+
       mutex = Mutex.new
       for i in 0...self.updater_options[:threads]
         updater_thread = Thread.new do
           self.logger.level = self.updater_options[:log_level]
           self.logger.datetime_format = "%s"
           self.logger.progname = "FeedUpdater".ljust(20)
-          
+
           while !Thread.current.respond_to?(:thread_id) &&
               begin_updating == false
             Thread.pass
@@ -589,7 +591,7 @@ module FeedTools
             self.logger.prefix =
               "Thread #{Thread.current.thread_id} ".ljust(20)
             self.logger.info("Thread started.")
-            
+
             begin
               FeedTools.feed_cache.initialize_cache()
               if !FeedTools.feed_cache.set_up_correctly?
@@ -599,7 +601,7 @@ module FeedTools
               self.logger.info(error)
             end
           end
-          
+
           ObjectSpace.garbage_collect()
           Thread.pass
 
@@ -622,7 +624,7 @@ module FeedTools
                   unless @@on_update.nil?
                     mutex.synchronize do
                       progress = sprintf("%.2f", Thread.current.progress)
-                      self.logger.prefix = 
+                      self.logger.prefix =
                         ("Thread #{Thread.current.thread_id} (#{progress}%)"
                           ).ljust(20)
                       self.cloaker(&(@@on_update)).bind(self).call(
@@ -632,7 +634,7 @@ module FeedTools
                 else
                   mutex.synchronize do
                     progress = sprintf("%.2f", Thread.current.progress)
-                    self.logger.prefix = 
+                    self.logger.prefix =
                       ("Thread #{Thread.current.thread_id} (#{progress}%)"
                         ).ljust(20)
                     self.logger.info(
@@ -643,7 +645,7 @@ module FeedTools
               rescue Exception => error
                 mutex.synchronize do
                   progress = sprintf("%.2f", Thread.current.progress)
-                  self.logger.prefix = 
+                  self.logger.prefix =
                     ("Thread #{Thread.current.thread_id} (#{progress}%)"
                       ).ljust(20)
                   if @@on_error != nil
@@ -671,9 +673,9 @@ module FeedTools
             end
             ObjectSpace.garbage_collect()
             Thread.pass
-          end          
+          end
         end
-        @threads << updater_thread        
+        @threads << updater_thread
         class <<updater_thread
           attr_accessor :thread_id
           attr_accessor :progress
@@ -689,7 +691,7 @@ module FeedTools
         begin_updating = true
       end
       Thread.pass
-      
+
       ObjectSpace.garbage_collect()
       Thread.pass
       for i in 0...@threads.size
@@ -702,7 +704,7 @@ module FeedTools
       end
       self.logger.prefix = "FeedUpdater".ljust(20)
       ObjectSpace.garbage_collect()
-      
+
       self.logger.progname = nil
       unless @@on_complete.nil?
         self.cloaker(&(@@on_complete)).bind(self).call(@feed_href_list)

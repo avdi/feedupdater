@@ -1,3 +1,5 @@
+== FeedUpdater 0.2.6
+ * Updated for compatibility with RubyGems >= 1.0
 == FeedUpdater 0.2.5
  * fixed bug with redefinition of file searching system
 == FeedUpdater 0.2.4

@@ -57,7 +57,6 @@ spec = Gem::Specification.new do |s|
   s.add_dependency('feedtools', '>= 0.2.24')
 
   s.require_path = 'lib'
-  s.autorequire = 'feed_updater'
 
   s.rdoc_options << '--exclude' << '.'
   s.has_rdoc = false

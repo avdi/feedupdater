@@ -61,7 +61,7 @@ require 'feed_updater'
 
 if ARGV[0].nil?
   # Exit quickly if no command line arguments given.
-  
+
   feed_updater_version = FeedTools::FEED_UPDATER_VERSION::STRING
   feed_tools_version = "<error: not loaded>"
   if defined?(FeedTools::FEED_TOOLS_VERSION::STRING)
@@ -97,7 +97,7 @@ elsif ARGV[0] == "install"
   install_vendor_directory = nil
   install_config_directory = nil
   install_script_directory = nil
-  
+
   current_directory = File.expand_path(".")
   loop do
     entries = Dir.entries(current_directory)
@@ -118,12 +118,12 @@ elsif ARGV[0] == "install"
     install_vendor_directory = File.expand_path(rails_root + "/vendor")
     install_config_directory = File.expand_path(rails_root + "/config")
     install_script_directory = File.expand_path(rails_root + "/script")
-    
+
     # Install FeedUpdater gem to application vendor directory
     system("rm -rf #{install_vendor_directory}/feedupdater")
     unpack_string = `gem unpack feedupdater`
     feed_updater_version =
-      unpack_string.scan(/\'feedupdater\-(.*)\'/).flatten[0]
+      unpack_string.scan(/feedupdater\-(.*)\'/).flatten[0]
     if feed_updater_version.nil? || feed_updater_version == ""
       puts "You need to have the feedupdater gem installed for the install"
       puts "subcommand to run correctly."
@@ -131,11 +131,11 @@ elsif ARGV[0] == "install"
     end
     puts "Installing FeedUpdater #{feed_updater_version} " +
       "to vendor directory..."
-    
+
     system("cp -rp feedupdater-#{feed_updater_version} " +
       "#{install_vendor_directory}")
     system("rm -rf feedupdater-#{feed_updater_version}")
-    system("mv #{install_vendor_directory}/" + 
+    system("mv #{install_vendor_directory}/" +
       "feedupdater-#{feed_updater_version} " +
       "#{install_vendor_directory}/feedupdater")
 
@@ -143,7 +143,7 @@ elsif ARGV[0] == "install"
     system("rm -rf #{install_vendor_directory}/feedtools")
     unpack_string = `gem unpack feedtools`
     feed_tools_version =
-      unpack_string.scan(/\'feedtools\-(.*)\'/).flatten[0]
+      unpack_string.scan(/feedtools\-(.*)\'/).flatten[0]
     if feed_tools_version.nil? || feed_tools_version == ""
       puts "You need to have the feedtools gem installed for the install"
       puts "subcommand to run correctly."
@@ -154,7 +154,7 @@ elsif ARGV[0] == "install"
     system("cp -rp feedtools-#{feed_tools_version} " +
       "#{install_vendor_directory}")
     system("rm -rf feedtools-#{feed_tools_version}")
-    system("mv #{install_vendor_directory}/" + 
+    system("mv #{install_vendor_directory}/" +
       "feedtools-#{feed_tools_version} " +
       "#{install_vendor_directory}/feedtools")
 
@@ -174,7 +174,7 @@ elsif ARGV[0] == "install"
     system("rm -rf #{install_script_directory}/feed_updater")
     system("cp -p #{__FILE__} #{install_script_directory}")
     system("chmod +x #{install_script_directory}/feed_updater")
-    
+
     puts "Use script/feed_updater to run FeedUpdater."
   end
   exit
