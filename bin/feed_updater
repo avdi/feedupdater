@@ -1,0 +1,317 @@
+#!/usr/bin/env ruby
+
+#--
+# Copyright (c) 2005 Robert Aman
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#++
+
+if RUBY_PLATFORM =~ /mswin/
+  puts "FeedUpdater is not supported on Windows due to a lack of fork()."
+  exit
+end
+
+# :stopdoc:
+# ROFLCOPTERS?
+# This mainly exists because of the approximately 1 billion different
+# ways to deploy this script.
+class FileStalker
+  def self.hunt(paths)
+    for path in paths
+      if File.exists?(File.expand_path(path))
+        return File.expand_path(path)
+      elsif File.exists?(File.expand_path(
+          File.dirname(__FILE__) + path))
+        return File.expand_path(File.dirname(__FILE__) + path)
+      elsif File.exists?(File.expand_path(
+          File.dirname(__FILE__) + "/" + path))
+        return File.expand_path(File.dirname(__FILE__) + "/" + path)
+      end
+    end
+    return nil
+  end
+end
+# :startdoc:
+
+$:.unshift(FileStalker.hunt([
+  "/../vendor/feedupdater/lib",
+  "vendor/feedupdater/lib",
+  "../lib"]))
+$:.uniq!
+
+require 'yaml'
+require 'feed_updater'
+
+if ARGV[0].nil?
+  # Exit quickly if no command line arguments given.
+  
+  feed_updater_version = FeedTools::FEED_UPDATER_VERSION::STRING
+  feed_tools_version = "<error: not loaded>"
+  if defined?(FeedTools::FEED_TOOLS_VERSION::STRING)
+    feed_tools_version = FeedTools::FEED_TOOLS_VERSION::STRING
+  elsif defined?(FEED_TOOLS_VERSION)
+    feed_tools_version = FEED_TOOLS_VERSION
+  end
+  puts ""
+  puts "FeedUpdater #{feed_updater_version} / FeedTools #{feed_tools_version}"
+  puts "USAGE: feed_updater <subcommand>"
+  puts ""
+  puts "Subcommands:"
+  puts "  start"
+  puts "    This will start the daemon if it hasn't already been started."
+  puts ""
+  puts "  stop"
+  puts "    This will stop the daemon if it's already running."
+  puts ""
+  puts "  restart"
+  puts "    This will restart the daemon."
+  puts ""
+  puts "  install"
+  puts "    If the current directory is a Rails installation, this will"
+  puts "    install FeedUpdater into the vendor folder and add a new script"
+  puts "    to the scripts/ directory for running FeedUpdater.  Rerunning"
+  puts "    the install subcommand will update the files against the latest"
+  puts "    version of the FeedUpdater gem file you have installed.  Rails"
+  puts "    is NOT required to use FeedUpdater."
+  puts ""
+  exit
+elsif ARGV[0] == "install"
+  rails_root = nil
+  install_vendor_directory = nil
+  install_config_directory = nil
+  install_script_directory = nil
+  
+  current_directory = File.expand_path(".")
+  loop do
+    entries = Dir.entries(current_directory)
+    if entries.include?("vendor") &&
+        entries.include?("config") &&
+        entries.include?("script")
+      rails_root = current_directory
+      break
+    else
+      break if current_directory == "/"
+      current_directory = File.expand_path(current_directory + "/..")
+    end
+  end
+  if rails_root.nil?
+    puts "You must run the install command when the current directory is"
+    puts "a Rails application."
+  else
+    install_vendor_directory = File.expand_path(rails_root + "/vendor")
+    install_config_directory = File.expand_path(rails_root + "/config")
+    install_script_directory = File.expand_path(rails_root + "/script")
+    
+    # Install FeedUpdater gem to application vendor directory
+    system("rm -rf #{install_vendor_directory}/feedupdater")
+    unpack_string = `gem unpack feedupdater`
+    feed_updater_version =
+      unpack_string.scan(/\'feedupdater\-(.*)\'/).flatten[0]
+    if feed_updater_version.nil? || feed_updater_version == ""
+      puts "You need to have the feedupdater gem installed for the install"
+      puts "subcommand to run correctly."
+      exit
+    end
+    puts "Installing FeedUpdater #{feed_updater_version} " +
+      "to vendor directory..."
+    
+    system("cp -rp feedupdater-#{feed_updater_version} " +
+      "#{install_vendor_directory}")
+    system("rm -rf feedupdater-#{feed_updater_version}")
+    system("mv #{install_vendor_directory}/" + 
+      "feedupdater-#{feed_updater_version} " +
+      "#{install_vendor_directory}/feedupdater")
+
+    # Install FeedTools gem to application vendor directory
+    system("rm -rf #{install_vendor_directory}/feedtools")
+    unpack_string = `gem unpack feedtools`
+    feed_tools_version =
+      unpack_string.scan(/\'feedtools\-(.*)\'/).flatten[0]
+    if feed_tools_version.nil? || feed_tools_version == ""
+      puts "You need to have the feedtools gem installed for the install"
+      puts "subcommand to run correctly."
+      exit
+    end
+    puts "Installing FeedTools #{feed_tools_version} to vendor directory..."
+
+    system("cp -rp feedtools-#{feed_tools_version} " +
+      "#{install_vendor_directory}")
+    system("rm -rf feedtools-#{feed_tools_version}")
+    system("mv #{install_vendor_directory}/" + 
+      "feedtools-#{feed_tools_version} " +
+      "#{install_vendor_directory}/feedtools")
+
+    # Copying the default config file to the config directory
+    if !File.exists?(File.expand_path(install_config_directory +
+        "/feed_updater.yml"))
+      puts "Installing default config file..."
+      config_file =
+        File.expand_path(File.dirname(__FILE__) + '/../config/feed_updater.yml')
+      system("cp -p #{config_file} #{install_config_directory}")
+    else
+      puts "Config file already exists, skipping..."
+    end
+
+    # Copying this executable to the script directory
+    puts "Copying executable to script directory..."
+    system("rm -rf #{install_script_directory}/feed_updater")
+    system("cp -p #{__FILE__} #{install_script_directory}")
+    system("chmod +x #{install_script_directory}/feed_updater")
+    
+    puts "Use script/feed_updater to run FeedUpdater."
+  end
+  exit
+end
+
+config_file = FileStalker.hunt([
+  "../config/feed_updater.yml",
+  "./feed_updater.yml"
+])
+# Reportedly, in some cases, the example config is found instead.
+if config_file =~ /example/
+  config_file = FileStalker.hunt([
+    "../../../config/feed_updater.yml",
+    "../config/feed_updater.yml",
+    "./feed_updater.yml"
+  ])
+end
+if config_file.nil?
+  puts "Could not locate feed_updater.yml config file."
+  exit
+end
+
+config_hash = YAML.load(File.open(config_file, "r").read)
+load_script_path = config_hash["load_script"]
+if !load_script_path.nil?
+  result = FileStalker.hunt([
+    load_script_path,
+    File.dirname(config_file) + "/" + load_script_path,
+    File.dirname(config_file) + load_script_path,
+    File.dirname(__FILE__) + "/../" + load_script_path,
+    File.dirname(__FILE__) + "/.." + load_script_path
+  ])
+  if result.nil?
+    puts "Could not locate #{load_script_path.inspect} file."
+    exit
+  else
+    load_script_path = result
+  end
+end
+
+pid_file_path = config_hash["pid_file_path"]
+if !pid_file_path.nil?
+  result = FileStalker.hunt([
+    pid_file_path,
+    File.dirname(config_file) + "/" + pid_file_path,
+    File.dirname(config_file) + pid_file_path,
+    File.dirname(__FILE__) + "/../" + pid_file_path,
+    File.dirname(__FILE__) + "/.." + pid_file_path,
+    "../" + pid_file_path
+  ])
+  pid_file_path = result if !result.nil?
+else
+  result = FileStalker.hunt([
+    File.dirname(__FILE__) + "/../config",
+    "./config",
+    File.dirname(__FILE__) + "/config"
+  ])
+  pid_file_path = result if !result.nil?
+end
+
+log_file_path = config_hash["log_file_path"]
+if !log_file_path.nil?
+  result = FileStalker.hunt([
+    log_file_path,
+    File.dirname(config_file) + "/" + log_file_path,
+    File.dirname(config_file) + log_file_path,
+    File.dirname(__FILE__) + "/../" + log_file_path,
+    File.dirname(__FILE__) + "/.." + log_file_path,
+    "../" + log_file_path
+  ])
+  log_file_path = result if !result.nil?
+else
+  result = FileStalker.hunt([
+    File.dirname(__FILE__) + "/../log",
+    "./log",
+    File.dirname(__FILE__) + "/log",
+    File.dirname(__FILE__) + "/../logs",
+    "./logs",
+    File.dirname(__FILE__) + "/logs"
+  ])
+  log_file_path = result if !result.nil?
+end
+
+script_class = nil
+existing_subclasses = []
+ObjectSpace.each_object do |instance|
+  if instance.class.name == "Class" &&
+      instance.ancestors.include?(FeedTools::FeedUpdater)
+    existing_subclasses << instance
+  end
+end
+load(load_script_path)
+loaded_subclasses = []
+ObjectSpace.each_object do |instance|
+  if instance.class.name == "Class" &&
+      instance.ancestors.include?(FeedTools::FeedUpdater)
+    loaded_subclasses << instance
+  end
+end
+script_classes = (loaded_subclasses - existing_subclasses)
+if script_classes.size == 0
+  puts "There do not appear to be any subclasses of FeedTools::FeedUpdater."
+  exit
+elsif script_classes.size > 1
+  puts "There appear to be multiple subclasses of FeedTools::FeedUpdater."
+  exit
+else
+  script_class = script_classes[0]
+end
+
+updater = nil
+if load_script_path.nil?
+  updater = FeedTools::FeedUpdater.new
+  FeedTools::FeedUpdater.on_update do |feed, seconds|
+    updater.logger.info("Loaded '#{feed.href}'.")
+    updater.logger.info("=> Updated (#{feed.title}) in #{seconds} seconds.")
+  end
+  FeedTools::FeedUpdater.on_error do |href, error|
+    updater.logger.info("Error updating '#{href}':")
+    updater.logger.info(error)
+  end
+else
+  updater = script_class.new
+end
+
+for key in config_hash.keys
+  key_sym = key.to_s.to_sym
+  updater.updater_options[key_sym] = config_hash[key]
+end
+updater.pid_file_dir = pid_file_path
+updater.log_file_dir = log_file_path
+
+case ARGV[0]
+when "start"
+  updater.start()
+when "stop"
+  updater.stop()
+when "restart"
+  updater.restart()
+end

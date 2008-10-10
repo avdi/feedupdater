@@ -1,0 +1,19 @@
+== FeedUpdater 0.2.5
+ * fixed bug with redefinition of file searching system
+== FeedUpdater 0.2.4
+ * added more code for detecting the location of the config file
+== FeedUpdater 0.2.3
+ * added additional logging messages
+== FeedUpdater 0.2.2
+ * better distribution of work across threads
+ * fixed major threading bug
+ * added configuration variable for sleep time
+== FeedUpdater 0.2.1
+ * no longer attempts to update feeds that have been updated very recently
+ * fixed logging levels
+ * added on_begin block
+== FeedUpdater 0.2.0
+ * multithreaded
+ * unchanged feeds will no longer call on_update
+== FeedUpdater 0.1.0
+ * initial version

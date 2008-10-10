@@ -1,0 +1,22 @@
+# This ensures that you don't break shared servers.
+start_delay: false
+
+# This is the path to the custom handler for updated feeds.
+# See the documentation for details.
+load_script: example/custom_updater.rb
+
+# Keep this set to 1 unless you're certain you need to set it higher.
+# Never set it higher than 1 if you're on a shared server.
+threads: 5
+
+# The amount of time to sleep between updates.  Expressed in minutes.
+sleep_time: 65
+
+# This is the path to store the pid files.
+pid_file_path: config
+
+# This is the path to store the log files.
+log_file_path: log
+
+# Log level
+log_level: 0

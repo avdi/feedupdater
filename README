@@ -1,0 +1,34 @@
+The FeedUpdater is a simple daemon for handling the automatic updating of
+FeedTools feed objects.
+
+ USAGE: feed_updater <subcommand>
+ 
+ Subcommands:
+   start
+   stop
+   restart
+   install
+
+The FeedUpdater daemon is very easy to use, especially if you're using it
+with a Rails application.  If you're going to be using it with a Rails app,
+simply install the feedupdater gem, navigate to your Rails app, and run
+the 'feed_updater install' command.  This will install FeedUpdater.  Then
+edit the feed_updater.yml config file as necessary.  You will probably need
+to define a custom updater class, which should probably go in your lib
+directory.  It's recommended that you use the example/custom_updater.rb file
+as a starting point.  You should using the updater events to copy any
+required fields to feed subscription tables or item tables as necessary so
+that a full feed parse isn't required every time the feed is displayed.
+
+The config file also has a start delay option.  This should almost always be
+set to true.  You should only turn it off when you are debugging a custom
+updater class, and it should probably never be turned off in production.
+Keeping it on prevents FeedUpdater from hitting the CPU too hard immediately
+after a server reboot, and also prevents hundreds of update processes from
+kicking off simultaneously on a shared server.
+
+If you chose to use FeedUpdater outside a Rails application, you should try
+to use a similar directory structure to what would be found in a Rails
+setup.  FeedUpdater will usually look in the current directory if it cannot
+find a file its looking for though, so if FeedUpdater can't find a file it 
+needs, changing directories will probably fix the problem.

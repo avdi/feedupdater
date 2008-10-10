@@ -1,0 +1,121 @@
+require 'rake'
+require 'rake/testtask'
+require 'rake/rdoctask'
+require 'rake/gempackagetask'
+require 'rake/contrib/rubyforgepublisher'
+
+require 'date'
+require 'rbconfig'
+
+require File.join(File.dirname(__FILE__), 'lib/feed_updater', 'version')
+
+PKG_NAME      = 'feedupdater'
+PKG_VERSION   = FeedTools::FEED_UPDATER_VERSION::STRING
+PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
+
+RELEASE_NAME  = "REL #{PKG_VERSION}"
+
+RUBY_FORGE_PROJECT = "feedtools"
+RUBY_FORGE_USER    = "sporkmonger"
+
+PKG_FILES = FileList[
+  '[a-zA-Z]*',
+  'bin/**/*', 
+  'lib/**/*',
+  'config/**/*', 
+  'example/**/*'
+].exclude(/\bCVS\b|~$/).exclude(/database\.yml/).exclude(/\.svn$/)
+
+desc "Default Task"
+task :default => [ :package ]
+
+# Generate the RDoc documentation
+
+Rake::RDocTask.new { |rdoc|
+  rdoc.rdoc_dir = 'doc'
+  rdoc.title    = "FeedUpdater -- updater daemon for FeedTools"
+  rdoc.options << '--line-numbers' << '--inline-source' <<
+    '--accessor' << 'cattr_accessor=object'
+  rdoc.template = "#{ENV['template']}.rb" if ENV['template']
+  rdoc.rdoc_files.include('README', 'CHANGELOG')
+  rdoc.rdoc_files.include('lib/**/*.rb')
+}
+
+# Create compressed packages
+
+spec = Gem::Specification.new do |s|
+  s.name = PKG_NAME
+  s.version = PKG_VERSION
+  s.summary = "Automatic feed updater daemon."
+  s.description = <<-DESC
+    Automatic feed updater daemon for use with FeedTools.
+  DESC
+  s.description.strip!
+
+  s.files = PKG_FILES.to_a
+  
+  s.add_dependency('feedtools', '>= 0.2.24')
+
+  s.require_path = 'lib'
+  s.autorequire = 'feed_updater'
+
+  s.rdoc_options << '--exclude' << '.'
+  s.has_rdoc = false
+  
+  s.bindir = "bin"
+  s.executables = ["feed_updater"]
+  s.default_executable = "feed_updater"
+  
+  s.author = "Bob Aman"
+  s.email = "bob@sporkmonger.com"
+  s.homepage = "http://sporkmonger.com/projects/feedupdater"
+  s.rubyforge_project = "feedtools"
+end
+  
+Rake::GemPackageTask.new(spec) do |p|
+  p.gem_spec = spec
+  p.need_tar = true
+  p.need_zip = true
+end
+
+task :lines do
+  lines, codelines, total_lines, total_codelines = 0, 0, 0, 0
+
+  for file_name in FileList["bin/*", "lib/**/*.rb"]
+    f = File.open(file_name)
+
+    while line = f.gets
+      lines += 1
+      next if line =~ /^\s*$/
+      next if line =~ /^\s*#/
+      codelines += 1
+    end
+    puts "L: #{sprintf("%4d", lines)}, LOC #{sprintf("%4d", codelines)} | #{file_name}"
+    
+    total_lines     += lines
+    total_codelines += codelines
+    
+    lines, codelines = 0, 0
+  end
+
+  puts "Total: Lines #{total_lines}, LOC #{total_codelines}"
+end
+
+# Publishing ------------------------------------------------------
+
+desc "Publish the API documentation"
+task :pdoc => [:rdoc] do 
+  Rake::SshDirPublisher.new(
+    "vacindak@sporkmonger.com",
+    "public_html/projects/feedupdater/api",
+    "doc").upload
+end
+
+desc "Publish the release files to RubyForge."
+task :release => [ :gem ] do
+  `rubyforge login`
+  release_command = "rubyforge add_release feedtools #{PKG_NAME} " +
+    "'REL #{PKG_VERSION}' pkg/#{PKG_NAME}-#{PKG_VERSION}.gem"
+  puts release_command
+  system(release_command)
+end
